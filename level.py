@@ -6,9 +6,9 @@ from powerups import PowerUp
 from projectile import Projectile
 
 LEVEL_MAPS = {
-    1: {'platforms': [(0, 560, 800, 40), (300, 450, 200, 20), (500, 300, 200, 20)], 'enemies': [(400, 410, 100), (600, 260, 50)], 'powerups': [((200, 430), 'size'), ((350, 430), 'fire'), ((650, 280), 'speed')]},
-    2: {'platforms': [(0, 560, 800, 40), (200, 450, 150, 20), (450, 350, 150, 20), (700, 250, 100, 20)], 'enemies': [(300, 410, 50), (600, 310, 100)], 'powerups': [((450, 330), 'fire')]},
-    3: {'platforms': [(0, 560, 800, 40), (150, 480, 100, 20), (350, 380, 100, 20), (550, 280, 100, 20), (750, 180, 50, 20)], 'enemies': [(200, 440, 50), (450, 340, 50), (650, 240, 50)], 'powerups': [((350, 360), 'speed')]}
+    1: {'platforms': [(0, 560, LEVEL_WIDTH, 40), (300, 450, 200, 20), (500, 300, 200, 20), (900, 350, 200, 20), (1300, 400, 150, 20), (1700, 250, 200, 20), (2100, 450, 300, 20)], 'enemies': [(400, 410, 100), (600, 260, 50), (1000, 310, 100), (1800, 210, 100)], 'powerups': [((200, 430), 'size'), ((950, 330), 'fire'), ((1750, 230), 'speed')]},
+    2: {'platforms': [(0, 560, LEVEL_WIDTH, 40), (200, 450, 150, 20), (450, 350, 150, 20), (700, 250, 100, 20), (1100, 200, 150, 20), (1500, 350, 200, 20), (1900, 500, 150, 20)], 'enemies': [(300, 410, 50), (600, 310, 100), (1200, 160, 50), (1600, 310, 100)], 'powerups': [((450, 330), 'fire'), ((1550, 330), 'size')]},
+    3: {'platforms': [(0, 560, LEVEL_WIDTH, 40), (150, 480, 100, 20), (350, 380, 100, 20), (550, 280, 100, 20), (750, 180, 50, 20), (1000, 250, 100, 20), (1300, 350, 100, 20), (1600, 450, 100, 20), (2000, 300, 200, 20)], 'enemies': [(200, 440, 50), (450, 340, 50), (650, 240, 50), (1050, 210, 50), (1350, 310, 50), (2100, 260, 100)], 'powerups': [((350, 360), 'speed'), ((1650, 430), 'fire')]}
 }
 
 class Platform(pygame.sprite.Sprite):
@@ -22,6 +22,7 @@ class Level:
     def __init__(self, surface):
         self.display_surface = surface
         self.current_level = 1
+        self.camera_scroll = 0
         self.build_level()
         
     def build_level(self):
@@ -71,7 +72,7 @@ class Level:
         pygame.sprite.groupcollide(self.projectiles, self.enemies, True, True)
         
         # Level progression
-        if player.rect.right >= WIDTH:
+        if player.rect.right >= LEVEL_WIDTH - 50:
             self.current_level += 1
             if self.current_level > len(LEVEL_MAPS):
                 self.current_level = 1
@@ -114,12 +115,20 @@ class Level:
         self.vertical_movement_collision()
         self.check_collisions()
         
+        # update camera
+        player_sprite = self.player.sprite
+        self.camera_scroll = player_sprite.rect.centerx - WIDTH // 2
+        if self.camera_scroll < 0:
+            self.camera_scroll = 0
+        elif self.camera_scroll > LEVEL_WIDTH - WIDTH:
+            self.camera_scroll = LEVEL_WIDTH - WIDTH
+            
         # draw level
-        self.platforms.draw(self.display_surface)
-        self.powerups.draw(self.display_surface)
-        self.enemies.draw(self.display_surface)
-        self.projectiles.draw(self.display_surface)
-        self.player.draw(self.display_surface)
+        for group in [self.platforms, self.powerups, self.enemies, self.projectiles]:
+            for sprite in group.sprites():
+                self.display_surface.blit(sprite.image, (sprite.rect.x - self.camera_scroll, sprite.rect.y))
+                
+        self.display_surface.blit(player_sprite.image, (player_sprite.rect.x - self.camera_scroll, player_sprite.rect.y))
         
         # UI
         font = pygame.font.SysFont(None, 36)

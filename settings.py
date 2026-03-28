@@ -3,6 +3,7 @@
 # Game Setup
 WIDTH = 800
 HEIGHT = 600
+LEVEL_WIDTH = 3000
 FPS = 60
 
 # Physics
