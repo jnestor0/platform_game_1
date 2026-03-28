@@ -1,5 +1,6 @@
 import pygame
-from settings import *
+from settings import PROJECTILE_COLOR, WIDTH
+
 
 class Projectile(pygame.sprite.Sprite):
     def __init__(self, pos, direction):
@@ -9,7 +10,7 @@ class Projectile(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(center=pos)
         self.speed = 10
         self.direction = direction  # 1 for right, -1 for left
-        
+
     def update(self):
         self.rect.x += self.speed * self.direction
         # Destroy if it goes completely off screen

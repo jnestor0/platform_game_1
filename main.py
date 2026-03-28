@@ -1,7 +1,8 @@
 import pygame
 import sys
-from settings import *
+from settings import WIDTH, HEIGHT, FPS, BG_COLOR
 from level import Level
+
 
 class Game:
     def __init__(self):
@@ -18,23 +19,24 @@ class Game:
             self.update()
             self.draw()
             self.clock.tick(FPS)
-            
+
         pygame.quit()
         sys.exit()
-        
+
     def events(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-                
+
     def update(self):
         pass
-        
+
     def draw(self):
         self.screen.fill(BG_COLOR)
         self.level.run()
         pygame.display.flip()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     game = Game()
     game.run()
