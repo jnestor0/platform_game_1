@@ -19,3 +19,13 @@ class PowerUp(pygame.sprite.Sprite):
     def update(self):
         # We could add an oscillating floating animation here later
         pass
+
+class Coin(pygame.sprite.Sprite):
+    def __init__(self, pos):
+        super().__init__()
+        self.image = pygame.Surface((14, 14), pygame.SRCALPHA)
+        pygame.draw.circle(self.image, (255, 215, 0), (7, 7), 7)
+        self.rect = self.image.get_rect(center=pos)
+        
+    def update(self):
+        pass

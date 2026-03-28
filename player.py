@@ -1,5 +1,6 @@
 import pygame
 import math
+import os
 from settings import *
 
 class Player(pygame.sprite.Sprite):
@@ -11,10 +12,36 @@ class Player(pygame.sprite.Sprite):
         self.shoot_time = 0
         self.shoot_cooldown = 300
         
-        self.image = pygame.Surface(PLAYER_SIZE, pygame.SRCALPHA)
+        image_path = r"C:\Users\jnest\.gemini\antigravity\brain\a5ca52f3-1f57-4659-8658-31c2cc7dba40\plumber_sprite_clean_1774670309850.png"
+        self.base_image = None
+        self.base_image_big = None
+        if os.path.exists(image_path):
+            temp_image = pygame.image.load(image_path).convert_alpha()
+            temp_image = pygame.transform.scale(temp_image, PLAYER_POWERUP_SIZE)
+            bg_color = temp_image.get_at((0, 0))
+            w, h = PLAYER_POWERUP_SIZE
+            magic_pink = (255, 0, 255)
+            for x in range(w):
+                for y in range(h):
+                    c = temp_image.get_at((x, y))
+                    # Erase background color matching top-left, AND any light grey/white checkerboard noises
+                    is_bg = (abs(c.r - bg_color.r) < 50 and abs(c.g - bg_color.g) < 50 and abs(c.b - bg_color.b) < 50)
+                    is_checkerboard = (c.r > 170 and c.g > 170 and c.b > 170 and abs(c.r - c.g) < 30 and abs(c.r - c.b) < 30)
+                    if is_bg or is_checkerboard:
+                        temp_image.set_at((x, y), magic_pink)
+            
+            temp_image.set_colorkey(magic_pink)
+            self.base_image_big = temp_image
+            self.base_image = pygame.transform.scale(temp_image, PLAYER_SIZE)
+            self.base_image.set_colorkey(magic_pink)
+            self.image = self.base_image.copy()
+        else:
+            self.image = pygame.Surface(PLAYER_SIZE, pygame.SRCALPHA)
+            
         self.rect = self.image.get_rect(topleft=pos)
         self.animation_timer = 0.0
-        
+        self.score = 0
+
         # Player movement
         self.direction = pygame.math.Vector2(0, 0)
         self.speed = PLAYER_SPEED
@@ -69,15 +96,22 @@ class Player(pygame.sprite.Sprite):
         self.can_fire = False
         
         self.speed = PLAYER_SPEED  # reset
-        self.image = pygame.Surface(PLAYER_SIZE, pygame.SRCALPHA)
         
         if p_type == 'size':
             self.is_big = True
             bottom = self.rect.bottom
             left = self.rect.left
-            self.image = pygame.Surface(PLAYER_POWERUP_SIZE, pygame.SRCALPHA)
+            if self.base_image_big:
+                self.image = self.base_image_big.copy()
+            elif self.base_image:
+                self.image = pygame.transform.scale(self.base_image, PLAYER_POWERUP_SIZE)
+            else:
+                self.image = pygame.Surface(PLAYER_POWERUP_SIZE, pygame.SRCALPHA)
             self.rect = self.image.get_rect(bottomleft=(left, bottom))
-        elif p_type == 'speed':
+        else:
+            self.image = self.base_image.copy() if self.base_image else pygame.Surface(PLAYER_SIZE, pygame.SRCALPHA)
+
+        if p_type == 'speed':
             self.is_fast = True
             self.speed = PLAYER_SPEED_BOOST
         elif p_type == 'fire':
@@ -95,7 +129,7 @@ class Player(pygame.sprite.Sprite):
                 
                 bottom = self.rect.bottom
                 left = self.rect.left
-                self.image = pygame.Surface(PLAYER_SIZE, pygame.SRCALPHA)
+                self.image = self.base_image.copy() if self.base_image else pygame.Surface(PLAYER_SIZE, pygame.SRCALPHA)
                 self.rect = self.image.get_rect(bottomleft=(left, bottom))
 
     def recharge(self):
@@ -105,46 +139,27 @@ class Player(pygame.sprite.Sprite):
                 self.ready_to_shoot = True
 
     def animate(self):
-        self.image.fill((0, 0, 0, 0)) # clear frame
+        if not self.base_image:
+            return
+            
+        size = PLAYER_POWERUP_SIZE if self.is_big else PLAYER_SIZE
+        current_base = self.base_image_big if self.is_big and getattr(self, 'base_image_big', None) else self.base_image
         
+        # Flip image based on facing
+        if self.facing_dir == -1:
+            flipped = pygame.transform.flip(current_base, True, False)
+        else:
+            flipped = current_base
+            
+        # Bobbing
         if self.direction.x != 0 and self.on_ground:
-            self.animation_timer += 0.2
-        elif not self.on_ground:
-            self.animation_timer = math.pi / 4
+            self.animation_timer += 0.5
+            bob = abs(math.sin(self.animation_timer)) * 4
+            self.image = pygame.Surface(size, pygame.SRCALPHA)
+            self.image.blit(flipped, (0, -bob))
         else:
             self.animation_timer = 0
-            
-        swing = math.sin(self.animation_timer) * 30 
-        
-        size = PLAYER_POWERUP_SIZE if self.is_big else PLAYER_SIZE
-        center_x = size[0] // 2
-        
-        head_pos = (center_x, 10 if not self.is_big else 15)
-        pelvis_pos = (center_x, 25 if not self.is_big else 40)
-        shoulder_pos = (center_x, 15 if not self.is_big else 22)
-        
-        color = PLAYER_COLOR
-        
-        pygame.draw.circle(self.image, color, head_pos, 8 if not self.is_big else 12)
-        pygame.draw.line(self.image, color, head_pos, pelvis_pos, 4)
-        
-        leg_length = 15 if not self.is_big else 20
-        ll_x = pelvis_pos[0] + math.sin(math.radians(swing)) * leg_length
-        ll_y = pelvis_pos[1] + math.cos(math.radians(swing)) * leg_length
-        pygame.draw.line(self.image, color, pelvis_pos, (ll_x, ll_y), 4)
-        
-        rl_x = pelvis_pos[0] + math.sin(math.radians(-swing)) * leg_length
-        rl_y = pelvis_pos[1] + math.cos(math.radians(-swing)) * leg_length
-        pygame.draw.line(self.image, color, pelvis_pos, (rl_x, rl_y), 4)
-        
-        arm_length = 12 if not self.is_big else 18
-        la_x = shoulder_pos[0] + math.sin(math.radians(-swing)) * arm_length
-        la_y = shoulder_pos[1] + math.cos(math.radians(-swing)) * arm_length
-        pygame.draw.line(self.image, color, shoulder_pos, (la_x, la_y), 3)
-        
-        ra_x = shoulder_pos[0] + math.sin(math.radians(swing)) * arm_length
-        ra_y = shoulder_pos[1] + math.cos(math.radians(swing)) * arm_length
-        pygame.draw.line(self.image, color, shoulder_pos, (ra_x, ra_y), 3)
+            self.image = flipped
 
     def update(self):
         self.get_input()

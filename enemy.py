@@ -10,6 +10,17 @@ class Enemy(pygame.sprite.Sprite):
         if os.path.exists(image_path):
             self.image = pygame.image.load(image_path).convert_alpha()
             self.image = pygame.transform.scale(self.image, (50, 50))
+            bg_color = self.image.get_at((0, 0))
+            magic_pink = (255, 0, 255)
+            for x in range(50):
+                for y in range(50):
+                    c = self.image.get_at((x, y))
+                    is_bg = (abs(c.r - bg_color.r) < 50 and abs(c.g - bg_color.g) < 50 and abs(c.b - bg_color.b) < 50)
+                    is_checkerboard = (c.r > 170 and c.g > 170 and c.b > 170 and abs(c.r - c.g) < 30 and abs(c.r - c.b) < 30)
+                    if is_bg or is_checkerboard:
+                        self.image.set_at((x, y), magic_pink)
+            
+            self.image.set_colorkey(magic_pink)
             self.rect = self.image.get_rect(bottomleft=(pos[0], pos[1] + 40))
         else:
             self.image = pygame.Surface((40, 40))

@@ -2,13 +2,35 @@ import pygame
 from settings import *
 from player import Player
 from enemy import Enemy
-from powerups import PowerUp
+from powerups import PowerUp, Coin
 from projectile import Projectile
 
 LEVEL_MAPS = {
-    1: {'platforms': [(0, 560, LEVEL_WIDTH, 40), (300, 450, 200, 20), (500, 300, 200, 20), (900, 350, 200, 20), (1300, 400, 150, 20), (1700, 250, 200, 20), (2100, 450, 300, 20)], 'enemies': [(400, 410, 100), (600, 260, 50), (1000, 310, 100), (1800, 210, 100)], 'powerups': [((200, 430), 'size'), ((950, 330), 'fire'), ((1750, 230), 'speed')]},
-    2: {'platforms': [(0, 560, LEVEL_WIDTH, 40), (200, 450, 150, 20), (450, 350, 150, 20), (700, 250, 100, 20), (1100, 200, 150, 20), (1500, 350, 200, 20), (1900, 500, 150, 20)], 'enemies': [(300, 410, 50), (600, 310, 100), (1200, 160, 50), (1600, 310, 100)], 'powerups': [((450, 330), 'fire'), ((1550, 330), 'size')]},
-    3: {'platforms': [(0, 560, LEVEL_WIDTH, 40), (150, 480, 100, 20), (350, 380, 100, 20), (550, 280, 100, 20), (750, 180, 50, 20), (1000, 250, 100, 20), (1300, 350, 100, 20), (1600, 450, 100, 20), (2000, 300, 200, 20)], 'enemies': [(200, 440, 50), (450, 340, 50), (650, 240, 50), (1050, 210, 50), (1350, 310, 50), (2100, 260, 100)], 'powerups': [((350, 360), 'speed'), ((1650, 430), 'fire')]}
+    1: {
+        'platforms': [(0, 560, 800, 40), (950, 560, 600, 40), (1700, 560, 1300, 40),
+                      (400, 460, 150, 20), (650, 360, 150, 20), (1100, 400, 200, 20),
+                      (1450, 300, 150, 20), (1850, 430, 150, 20), (2100, 330, 150, 20)],
+        'enemies': [(450, 420, 50), (1200, 360, 80), (1900, 390, 50)],
+        'powerups': [((700, 340), 'fire'), ((1500, 280), 'speed')],
+        'coins': [(410, 430), (440, 430), (470, 430), (680, 330), (710, 330), (1150, 370), (1200, 370)]
+    },
+    2: {
+        'platforms': [(0, 560, 600, 40), (750, 560, 500, 40), (1400, 560, 800, 40), (2350, 560, 650, 40),
+                      (300, 450, 150, 20), (550, 350, 150, 20), (900, 250, 150, 20),
+                      (1500, 400, 200, 20), (1800, 280, 150, 20), (2100, 180, 150, 20)],
+        'enemies': [(350, 410, 50), (950, 210, 50), (1600, 360, 80), (2400, 520, 100)],
+        'powerups': [((600, 330), 'size'), ((1850, 260), 'fire')],
+        'coins': [(320, 420), (350, 420), (570, 320), (600, 320), (920, 220), (950, 220), (1550, 370)]
+    },
+    3: {
+        'platforms': [(0, 560, 500, 40), (650, 560, 400, 40), (1200, 560, 400, 40), (1750, 560, 1250, 40),
+                      (250, 440, 100, 20), (450, 320, 100, 20), (750, 220, 100, 20),
+                      (1050, 320, 100, 20), (1350, 420, 100, 20), (1600, 300, 100, 20),
+                      (1950, 200, 150, 20), (2250, 350, 150, 20)],
+        'enemies': [(250, 400, 20), (750, 180, 20), (1350, 380, 20), (2000, 160, 50), (2300, 310, 50)],
+        'powerups': [((480, 300), 'speed'), ((1630, 280), 'size'), ((2030, 180), 'fire')],
+        'coins': [(260, 410), (460, 290), (760, 190), (1060, 290), (1360, 390), (1610, 270), (1970, 170)]
+    }
 }
 
 class Platform(pygame.sprite.Sprite):
@@ -31,6 +53,7 @@ class Level:
         self.enemies = pygame.sprite.Group()
         self.powerups = pygame.sprite.Group()
         self.projectiles = pygame.sprite.Group()
+        self.coins = pygame.sprite.Group()
         
         # Create player
         player_sprite = Player((100, 300), self.create_projectile)
@@ -49,6 +72,10 @@ class Level:
         # Create powerups
         for p in level_data['powerups']:
             self.powerups.add(PowerUp(p[0], p[1]))
+            
+        # Create coins
+        for c in level_data.get('coins', []):
+            self.coins.add(Coin(c))
 
     def create_projectile(self, pos, direction):
         projectile = Projectile(pos, direction)
@@ -57,6 +84,11 @@ class Level:
     def check_collisions(self):
         player = self.player.sprite
         
+        # Coins
+        collided_coins = pygame.sprite.spritecollide(player, self.coins, True)
+        for coin in collided_coins:
+            player.score += 1
+            
         # Powerups
         collided_powerups = pygame.sprite.spritecollide(player, self.powerups, True)
         if collided_powerups:
@@ -77,6 +109,11 @@ class Level:
             if self.current_level > len(LEVEL_MAPS):
                 self.current_level = 1
             self.build_level()
+            
+        # Check deaths (falling off map)
+        if player.rect.top > HEIGHT:
+            player.rect.topleft = (100, 300)
+            self.camera_scroll = 0
 
     def horizontal_movement_collision(self):
         player = self.player.sprite
@@ -110,6 +147,7 @@ class Level:
         self.enemies.update()
         self.powerups.update()
         self.projectiles.update()
+        self.coins.update()
         
         self.horizontal_movement_collision()
         self.vertical_movement_collision()
@@ -124,7 +162,7 @@ class Level:
             self.camera_scroll = LEVEL_WIDTH - WIDTH
             
         # draw level
-        for group in [self.platforms, self.powerups, self.enemies, self.projectiles]:
+        for group in [self.platforms, self.powerups, self.enemies, self.projectiles, self.coins]:
             for sprite in group.sprites():
                 self.display_surface.blit(sprite.image, (sprite.rect.x - self.camera_scroll, sprite.rect.y))
                 
@@ -135,9 +173,11 @@ class Level:
         level_text = font.render(f'Level: {self.current_level}', True, TEXT_COLOR)
         self.display_surface.blit(level_text, (10, 10))
         
-        player_sprite = self.player.sprite
+        score_text = font.render(f'Score: {player_sprite.score}', True, TEXT_COLOR)
+        self.display_surface.blit(score_text, (10, 40))
+        
         if player_sprite.is_big or player_sprite.is_fast or player_sprite.can_fire:
             time_left = max(0, (player_sprite.powerup_duration - (pygame.time.get_ticks() - player_sprite.powerup_start_time)) // 1000)
             active_p = 'Size' if player_sprite.is_big else 'Speed' if player_sprite.is_fast else 'Fire'
             p_text = font.render(f'Powerup: {active_p} ({time_left}s)', True, TEXT_COLOR)
-            self.display_surface.blit(p_text, (10, 40))
+            self.display_surface.blit(p_text, (10, 70))
